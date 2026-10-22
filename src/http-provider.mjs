@@ -65,8 +65,8 @@ export function createHttpProvider(name, ollama, config = {}, gate = {}) {
         return { installed: false, auth: "unknown", errorKind: "not_installed" };
       if (settings.apiKeyEnv && !process.env[settings.apiKeyEnv])
         return { installed: true, auth: "required", errorKind: "auth_required" };
-      const url = endpoint(settings, ollama);
       try {
+        const url = endpoint(settings, ollama);
         const response = await fetch(url + (ollama ? "/api/tags" : "/models"), {
           headers: headers(),
           signal: AbortSignal.timeout(5000),

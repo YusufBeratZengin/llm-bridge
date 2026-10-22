@@ -123,3 +123,25 @@ test("HTTP missing auth, unsafe URLs, redirects, and absent model fail safely", 
   );
   await assert.rejects(ollama({ baseUrl }).run(request(dir)), /model/);
 });
+
+test("doctor reports an invalid HTTP baseUrl instead of rejecting for every provider", async () => {
+  const { doctor } = await import("../src/index.mjs");
+  process.env.LLM_BRIDGE_TEST_KEY = "synthetic";
+  try {
+    const checks = await doctor({
+      config: {
+        providers: {
+          "openai-compatible": {
+            baseUrl: "http://example.invalid/v1",
+            apiKeyEnv: "LLM_BRIDGE_TEST_KEY",
+          },
+        },
+      },
+    });
+    const entry = checks.find((c) => c.name === "openai-compatible");
+    assert.equal(entry.errorKind, "nonzero_exit");
+    assert.equal(entry.auth, "unknown");
+  } finally {
+    Reflect.deleteProperty(process.env, "LLM_BRIDGE_TEST_KEY");
+  }
+});
