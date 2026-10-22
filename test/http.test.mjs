@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import test from "node:test";
 import { createProvider as ollama } from "../providers/ollama.mjs";
 import { createProvider as compatible } from "../providers/openai-compatible.mjs";
@@ -124,13 +125,18 @@ test("HTTP missing auth, unsafe URLs, redirects, and absent model fail safely", 
   await assert.rejects(ollama({ baseUrl }).run(request(dir)), /model/);
 });
 
-test("doctor reports an invalid HTTP baseUrl instead of rejecting for every provider", async () => {
+test("doctor reports an invalid HTTP baseUrl instead of rejecting for every provider", async (t) => {
   const { doctor } = await import("../src/index.mjs");
+  const dir = await workspace(t);
+  const baseUrl = await server(t, (_req, res) => res.end("{}"));
   process.env.LLM_BRIDGE_TEST_KEY = "synthetic";
   try {
     const checks = await doctor({
       config: {
         providers: {
+          "codex-cli": { command: join(dir, "absent-codex") },
+          "claude-code": { command: join(dir, "absent-claude") },
+          ollama: { baseUrl },
           "openai-compatible": {
             baseUrl: "http://example.invalid/v1",
             apiKeyEnv: "LLM_BRIDGE_TEST_KEY",

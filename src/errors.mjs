@@ -1,5 +1,8 @@
 /** @import { ErrorKind, ProviderConfig } from './types.mjs' */
 
+// Only explicitly safe, bridge-owned diagnostics may reach the terminal.
+export class InputError extends Error {}
+
 /** @type {Partial<Record<ErrorKind, string[]>>} */
 export const DEFAULT_PATTERNS = {
   quota_exhausted: [

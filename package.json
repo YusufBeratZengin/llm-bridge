@@ -1,7 +1,7 @@
 {
   "name": "llm-bridge",
   "version": "0.1.0",
-  "description": "Delegate coding-agent tasks through a privacy-gated CLI and Node library.",
+  "description": "Delegate coding-agent tasks through a privacy-gated CLI and Node library",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -12,7 +12,8 @@
   },
   "exports": {
     ".": "./src/index.mjs",
-    "./providers/*": "./providers/*.mjs"
+    "./providers/*": "./providers/*.mjs",
+    "./package.json": "./package.json"
   },
   "files": [
     "bin",
@@ -22,19 +23,46 @@
     "README.tr.md",
     "LICENSE",
     "SECURITY.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "docs",
+    "examples"
   ],
   "scripts": {
-    "test": "node --test test/gate.test.mjs test/http.test.mjs test/bridge.test.mjs test/config.test.mjs test/providers.test.mjs test/cli.test.mjs",
+    "test": "node --test",
     "lint": "biome check .",
     "format": "biome check --write .",
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run typecheck && npm test",
-    "scan:staged": "node scripts/scan-staged.mjs"
+    "scan:staged": "node scripts/scan-staged.mjs",
+    "prepublishOnly": "npm run lint && npm run typecheck && npm test"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@types/node": "20.17.19",
     "typescript": "5.6.3"
-  }
+  },
+  "author": "Yusuf Berat Zengin",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YusufBeratZengin/llm-bridge.git"
+  },
+  "homepage": "https://github.com/YusufBeratZengin/llm-bridge#readme",
+  "bugs": {
+    "url": "https://github.com/YusufBeratZengin/llm-bridge/issues"
+  },
+  "keywords": [
+    "llm",
+    "ai-agents",
+    "codex",
+    "claude-code",
+    "ollama",
+    "cli",
+    "delegation",
+    "privacy-gate"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "sideEffects": false
 }

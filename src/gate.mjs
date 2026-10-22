@@ -82,11 +82,11 @@ export function scan(text, config = {}, source = "prompt") {
       column: index - lineStarts[low] + 1,
     });
   }
-  /** @param {string} kind @param {RegExp} regex @param {(value: string) => boolean} [accept] */
+  /** @param {string} kind @param {RegExp} regex @param {(value: string, index: number) => boolean} [accept] */
   function match(kind, regex, accept = () => true) {
     for (const item of text.matchAll(regex)) {
       const value = item[0];
-      if (allowed.has(value) || !accept(value)) continue;
+      if (allowed.has(value) || !accept(value, item.index)) continue;
       report(kind, value, item.index);
     }
   }
@@ -101,10 +101,12 @@ export function scan(text, config = {}, source = "prompt") {
   );
   match("api_key", /\bBearer\s+[A-Za-z0-9._~+/=-]{20,}/gi);
   match("jwt", /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g);
+  const images = [...text.matchAll(/data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/]+={0,2}/gi)];
   match(
     "high_entropy",
     /(?<![A-Za-z0-9_+/=-])[A-Za-z0-9_+/-]{32,}={0,2}(?![A-Za-z0-9_+/=-])/g,
-    (v) =>
+    (v, index) =>
+      !images.some((image) => index >= image.index && index < image.index + image[0].length) &&
       !/^[a-f0-9]{40}$|^[a-f0-9]{64}$/i.test(v) &&
       entropy(v) >= 4.3 &&
       /[a-z]/.test(v) &&
@@ -112,11 +114,16 @@ export function scan(text, config = {}, source = "prompt") {
   );
   if (config.pii) {
     match("email", /\b[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9-]+(?:\.[A-Z0-9-]+)+\b/gi);
-    match("phone", /(?<!\w)\+?\d(?:[\d ().-]{5,}\d)(?!\w)/g, (v) => {
+    match("phone", /(?<![\w.-])\+?\d(?:[\d ().-]{5,}\d)(?![\w.-])/g, (v) => {
       const digits = v.replace(/\D/g, "");
-      return digits.length >= 10 && digits.length <= 15;
+      // Long bare identifiers (ISBNs, UUID pieces) are not phone evidence.
+      return (
+        !/^\d+(?:\.\d+)+$/.test(v) &&
+        digits.length >= 10 &&
+        (v.startsWith("+") ? digits.length <= 15 : digits.length <= 12)
+      );
     });
-    match("card", /(?<!\d)\d(?:[ -]?\d){12,18}(?!\d)/g, luhn);
+    match("card", /(?<![\w-])\d(?:[ -]?\d){12,18}(?![\w-])/g, luhn);
     // Test every bounded candidate ending at a word boundary. A following word
     // must not hide an otherwise valid, space-formatted IBAN.
     for (const start of text.matchAll(/\b[A-Z]{2}\d{2}/g)) {

@@ -1,0 +1,27 @@
+name: Feature request
+description: Propose an improvement to llm-bridge
+title: "Feature: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: doctor
+    attributes:
+      label: llm-bridge doctor --json output
+      description: Include status output if provider support is relevant; never include credentials or private paths.
+      render: json

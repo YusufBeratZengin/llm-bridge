@@ -100,3 +100,51 @@ test("additional well-known key formats are detected", () => {
   ];
   for (const sample of samples) assert.ok(scan(sample).length, sample.slice(0, 4));
 });
+
+test("PII false positives: public identifiers, versions, hashes and image placeholders", () => {
+  const isbn = "978" + "0306406157";
+  assert.equal(luhn(isbn), false);
+  for (const [label, value] of [
+    ["ISBN", isbn],
+    ["version", "1.2.3.4567"],
+    ["long dotted version", "12.345.678.9012"],
+    ["UUID", ["123e4567", "e89b", "12d3", "a456", "123456789012"].join("-")],
+    ["40-char hex", "0123456789abcdef".repeat(2) + "01234567"],
+    [
+      "base64 image",
+      "data:image/png;base64," + Buffer.from("synthetic image placeholder only").toString("base64"),
+    ],
+  ])
+    assert.deepEqual(scan(value, { pii: true }), [], label);
+});
+
+test("PII true positives use generated mod-97 and Luhn check digits; allowlists stay exact", () => {
+  const bban = "TEST" + "0".repeat(14);
+  const raw = bban + "GB00";
+  let remainder = 0;
+  for (const char of raw) {
+    for (const digit of /[A-Z]/.test(char) ? String(char.charCodeAt(0) - 55) : char)
+      remainder = (remainder * 10 + Number(digit)) % 97;
+  }
+  const iban = "GB" + String(98 - remainder).padStart(2, "0") + bban;
+  const prefix = "4" + "2".repeat(14);
+  const card = Array.from({ length: 10 }, (_, n) => prefix + n).find(luhn);
+  assert.ok(card);
+  assert.ok(validIban(iban));
+  for (const [value, kind] of [
+    [iban, "iban"],
+    [card, "card"],
+    ["synthetic" + "@example.invalid", "email"],
+  ]) {
+    assert.ok(
+      scan(value, { pii: true }).some((f) => f.kind === kind),
+      kind,
+    );
+    assert.ok(!scan(value, { pii: true, allowlist: [value] }).some((f) => f.kind === kind));
+    assert.ok(
+      scan(value, { pii: true, allowlist: [value.slice(0, -1)] }).some((f) => f.kind === kind),
+    );
+  }
+  // An image label exempts only entropy heuristics, never explicit key formats.
+  assert.ok(scan("data:image/png;base64," + fakeKey()).some((f) => f.kind === "api_key"));
+});

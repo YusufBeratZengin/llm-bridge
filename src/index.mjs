@@ -1,6 +1,7 @@
 import { basename, resolve } from "node:path";
 import { DEFAULT_TIMEOUT, loadConfig, validateTimeout } from "./config.mjs";
-import { GateError } from "./gate.mjs";
+import { InputError, failure } from "./errors.mjs";
+import { GateError, scan } from "./gate.mjs";
 import { providerInput } from "./input.mjs";
 import { createLog } from "./log.mjs";
 import { runProcess } from "./process.mjs";
@@ -10,7 +11,7 @@ export { GateError, scan } from "./gate.mjs";
 export { createProviders } from "./providers.mjs";
 export { loadConfig } from "./config.mjs";
 /** @import {Config, Provider, Mode, Result, Attachment} from './types.mjs' */
-/** @typedef {{provider?: string, prompt: string, cwd?: string, model?: string, mode?: Mode, timeoutMs?: number, files?: string[], allowWrite?: boolean, fallback?: string[], config?: Config, providers?: Record<string, Provider>, logRoot?: string}} DelegateOptions */
+/** @typedef {{provider?: string, prompt: string, cwd?: string, model?: string, mode?: Mode, timeoutMs?: number, totalTimeoutMs?: number, dryRun?: boolean, files?: string[], allowWrite?: boolean, fallback?: string[], config?: Config, providers?: Record<string, Provider>, logRoot?: string, onWarning?: (message: string) => void}} DelegateOptions */
 
 /** Load attached UTF-8 text once; fail closed on binary, invalid encoding, or >4 MiB.
  * @param {string} path
@@ -41,6 +42,12 @@ async function readText(path) {
 
 /** @param {DelegateOptions} options */
 export async function delegate(options) {
+  const started = performance.now();
+  if (options.totalTimeoutMs !== undefined) validateTimeout(options.totalTimeoutMs);
+  const remaining = () =>
+    options.totalTimeoutMs === undefined
+      ? Number.POSITIVE_INFINITY
+      : Math.max(0, options.totalTimeoutMs - (performance.now() - started));
   const cwd = resolve(options.cwd ?? process.cwd());
   const config = options.config ?? (await loadConfig(cwd));
   const registry = options.providers ?? createProviders(config);
@@ -48,7 +55,8 @@ export async function delegate(options) {
   const timeoutMs = options.timeoutMs ?? config.timeoutMs ?? DEFAULT_TIMEOUT;
   validateTimeout(timeoutMs);
   if (mode === "task" && options.allowWrite !== true)
-    throw new Error("task mode requires explicit --allow-write (allowWrite: true in the library).");
+    throw new InputError("--allow-write is required for task mode");
+  if (!options.prompt.trim()) throw new InputError("Prompt is empty");
   const names = [
     ...new Set(
       [options.provider ?? config.provider ?? "codex-cli", ...(options.fallback ?? [])].map(
@@ -56,17 +64,30 @@ export async function delegate(options) {
       ),
     ),
   ];
-  if (names.some((name) => !Object.hasOwn(registry, name)))
-    throw new Error("Unknown provider; run llm-bridge providers.");
+  const unknown = names.find((name) => !Object.hasOwn(registry, name));
+  if (unknown !== undefined) {
+    const label =
+      /^[a-z][a-z0-9-]{0,39}$/.test(unknown) && !scan(unknown).length ? ` '${unknown}'` : "";
+    throw new InputError(
+      `Unknown provider${label}. Available: ${Object.keys(registry)
+        .filter((name) => /^[a-z][a-z0-9-]{0,39}$/.test(name) && !scan(name).length)
+        .join(", ")}`,
+    );
+  }
   /** @type {Attachment[]} */
   const files = [];
-  for (const path of options.files ?? [])
-    files.push({ name: basename(path), text: await readText(resolve(cwd, path)) });
+  for (const path of options.files ?? []) {
+    try {
+      files.push({ name: basename(path), text: await readText(resolve(cwd, path)) });
+    } catch {
+      throw new InputError("Cannot read attachment (path relative to --cwd)");
+    }
+  }
   if (mode === "review") {
     const diff = await runProcess(
       "git",
       ["--no-pager", "diff", "--no-ext-diff", "--no-textconv", "--binary", "HEAD", "--", "."],
-      { cwd, timeoutMs },
+      { cwd, timeoutMs: Math.max(1, Math.ceil(Math.min(timeoutMs, remaining()))) },
     );
     // An unborn repository needs a committed baseline before review.
     if (diff.exitCode !== 0 || diff.timedOut || diff.overflow || diff.missing)
@@ -101,19 +122,55 @@ export async function delegate(options) {
     promptChars: options.prompt.length,
     attachmentCount: files.length,
   });
+  if (options.dryRun) {
+    return {
+      text: "",
+      exitCode: 0,
+      errorKind: null,
+      provider: names[0],
+      attempts: [],
+      logPath: log.path,
+      plan: {
+        provider: names[0],
+        providers: names,
+        mode,
+        timeoutMs,
+        totalTimeoutMs: options.totalTimeoutMs ?? null,
+        // Labels can contain personal data; disclose only ordinal labels and sizes.
+        attachments: files.map((file, i) => ({
+          label: `attachment:${i + 1}`,
+          chars: file.text.length,
+        })),
+        detection: await registry[names[0]].detect(cwd),
+      },
+    };
+  }
   /** @type {{provider: string, errorKind: Result['errorKind'], exitCode: number}[]} */
   const attempts = [];
   for (const name of names) {
-    const result = await registry[name].run(request);
+    const budget = remaining();
+    let result =
+      budget < 1
+        ? failure("timeout", 124)
+        : await registry[name].run({
+            ...request,
+            timeoutMs: Math.max(1, Math.ceil(Math.min(timeoutMs, budget))),
+          });
+    if (remaining() < 1) result = failure("timeout", 124);
     attempts.push({ provider: name, errorKind: result.errorKind, exitCode: result.exitCode });
     await log.write({ event: "attempt", ...attempts.at(-1) });
     if (
       !result.errorKind ||
       !["quota_exhausted", "timeout"].includes(result.errorKind) ||
-      name === names.at(-1)
+      name === names.at(-1) ||
+      remaining() < 1
     ) {
       return { ...result, provider: name, attempts, logPath: log.path };
     }
+    if (mode === "task")
+      options.onWarning?.(
+        "Fallback after task failure: partial edits may exist; inspect the worktree.",
+      );
   }
   throw new Error("No provider selected.");
 }

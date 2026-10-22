@@ -7,13 +7,17 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        node: [20, 22]
+        node: [20, 22, 24]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
@@ -26,3 +30,4 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - run: npm pack --dry-run
