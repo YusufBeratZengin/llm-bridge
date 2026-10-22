@@ -1,0 +1,14 @@
+node_modules/
+.cache/
+is/
+coverage/
+*.tgz
+.env*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+.llm-bridge.json
+*.log
