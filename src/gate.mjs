@@ -93,12 +93,13 @@ export function scan(text, config = {}, source = "prompt") {
   match("private_key", /-----BEGIN (?:RSA |EC |OPENSSH |DSA |ENCRYPTED )?PRIVATE KEY-----/g);
   match(
     "api_key",
-    /\b(?:sk-(?:proj-|ant-api\d{2}-|or-v1-)?[A-Za-z0-9_-]{20,}|nvapi-[A-Za-z0-9_-]{20,}|AIza[A-Za-z0-9_-]{30,}|AKIA[A-Z0-9]{16}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{20,})\b/g,
+    /\b(?:sk-(?:proj-|ant-api\d{2}-|or-v1-)?[A-Za-z0-9_-]{20,}|nvapi-[A-Za-z0-9_-]{20,}|AIza[A-Za-z0-9_-]{30,}|(?:AKIA|ASIA)[A-Z0-9]{16}|(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{20,}|glpat-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{20,})\b/g,
   );
   match(
     "credential_assignment",
-    /\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|password|secret)["']?\s*[=:]\s*["']?[^\s"',;}{]{8,}/gi,
+    /(?:secret[_-]?(?:access[_-]?)?key|private[_-]?key|api[_-]?key|access[_-]?token|auth[_-]?token|token|password|passwd|secret)["']?\s*[=:]\s*["']?[^\s"',;}{]{8,}/gi,
   );
+  match("api_key", /\bBearer\s+[A-Za-z0-9._~+/=-]{20,}/gi);
   match("jwt", /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g);
   match(
     "high_entropy",

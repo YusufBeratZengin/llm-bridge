@@ -73,3 +73,30 @@ test("reports contain coordinates and no matched text", () => {
   assert.throws(() => enforceGate([{ name: "prompt", text: key }]), GateError);
   assert.equal(scan("Review the implementation and explain tradeoffs.").length, 0);
 });
+
+test("credential assignments are detected inside environment-style names", () => {
+  const samples = [
+    ["OPENAI_API_", "KEY=abcd1234efgh"],
+    ["DB_PASS", "WORD=hunter2hunter2"],
+    ["GITHUB_TO", "KEN=abcdef123456"],
+    ["AWS_SECRET_ACCESS_", "KEY=wJalrXUtnFEMI"],
+    ["client", "Secret: abcdefgh1234"],
+    ["export MY_TO", "KEN='abcdef123456'"],
+  ].map((parts) => parts.join(""));
+  for (const sample of samples)
+    assert.ok(
+      scan(sample).some((f) => f.kind === "credential_assignment"),
+      sample.slice(0, 6),
+    );
+  assert.equal(scan("tokenizer: abcdefgh1234").length, 0);
+});
+
+test("additional well-known key formats are detected", () => {
+  const samples = [
+    "AS" + "IA" + "B".repeat(16),
+    "sk_" + "live_" + "Ab9xQ2rT7vY4nM6pL8zK3wD5",
+    "glp" + "at-" + "Ab9xQ2rT7vY4nM6pL8zK",
+    "Authorization: Bear" + "er " + "Ab9xQ2rT7vY4nM6pL8zK3wD5",
+  ];
+  for (const sample of samples) assert.ok(scan(sample).length, sample.slice(0, 4));
+});
