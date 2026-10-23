@@ -6,6 +6,9 @@ All notable changes follow [Keep a Changelog 1.1](https://keepachangelog.com/en/
 
 ### Added
 
+- Reproducible terminal SVG from real CLI help with a stale-image check, npm version badges, and matching English/Turkish quick starts, rationale, and FAQ.
+- Native Node test coverage reporting in local and CI test runs, plus configuration validation and merge regressions.
+- Weekly JavaScript/TypeScript CodeQL analysis and weekly Dependabot updates.
 - Complete npm metadata, public provenance, prepublish checks and a tag-triggered trusted-publishing workflow; docs and examples included in the package.
 - Safe option-specific CLI errors and synthetic-secret non-disclosure regression tables.
 - Default-provider notice and gated `--dry-run` plans with status-only detection.
@@ -15,7 +18,7 @@ All notable changes follow [Keep a Changelog 1.1](https://keepachangelog.com/en/
 - Fake-executable/HTTP fallback tests: quota, auth, deduplicated aliases, task partial-edit warning and shared `--total-timeout-ms` deadline.
 - Windows shim and spaced-path tests; nested `--out` parent creation and safe write errors; Ubuntu/Windows CI on Node 20/22/24 with package checks.
 - `logs --last`, `--log-dir` and `logs --clean --older-than 7d`; retention documentation and safe cleanup tests.
-- Bug/feature forms, PR template, Contributor Covenant 2.1 and monthly dev-dependency/action updates.
+- Bug/feature forms, PR template, Contributor Covenant 2.1 and weekly dev-dependency/action updates.
 
 ### Changed
 
@@ -27,7 +30,7 @@ All notable changes follow [Keep a Changelog 1.1](https://keepachangelog.com/en/
 - ISBN-like numbers, UUID segments and dotted versions no longer produce phone findings; image URLs skip entropy heuristics while explicit secret detection stays active.
 - Output parent directories are created and path-containing errors remain private.
 
-## 0.1.0 — 2026-10-22
+## [0.1.0] - 2026-10-23
 
 - Initial ESM CLI and Node library with no runtime dependencies.
 - Codex CLI, Claude Code, local Ollama, and OpenAI-compatible HTTP adapters.

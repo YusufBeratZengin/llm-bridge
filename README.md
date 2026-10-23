@@ -1,56 +1,45 @@
 # llm-bridge
 
-[![CI](https://github.com/YusufBeratZengin/llm-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/YusufBeratZengin/llm-bridge/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![Node.js](https://img.shields.io/badge/node-%3E%3D20-green.svg)](package.json)
+[![CI](https://github.com/YusufBeratZengin/llm-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/YusufBeratZengin/llm-bridge/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![Node.js](https://img.shields.io/badge/node-%3E%3D20-green.svg)](package.json) [![npm](https://img.shields.io/npm/v/llm-bridge.svg)](https://www.npmjs.com/package/llm-bridge)
 
-One CLI and a small Node library for delegating tasks to another coding agent. It normalizes subprocesses and HTTP models, scans outgoing text, applies timeouts, records redacted JSONL logs, and optionally falls back after quota or timeout errors.
+A privacy-gated CLI and Node library for delegating tasks across coding agents and HTTP models, with zero runtime dependencies.
 
-[Türkçe](README.tr.md) · MIT · Node.js 20 or later · ESM · Zero runtime dependencies
+[Türkçe](README.tr.md) · MIT · Node.js 20 or later · ESM
 
-Install from a source checkout with `npm install -g . --omit=dev --ignore-scripts`; inspect a request with `llm-bridge ask --dry-run "hi"` before generating. No runtime dependencies are needed.
+![Real terminal output from llm-bridge help](docs/demo.svg)
+
+## Why llm-bridge?
+
+- **One interface:** Shared commands and normalized errors for Codex CLI, Claude Code, Ollama, and OpenAI-compatible services.
+- **Checks before sending:** Secret scanning for explicit prompts, attachments, and diffs, with optional PII scanning and redacted logs.
+- **Controlled delegation:** Read-only modes, explicit write permission, timeouts, and opt-in fallback only after quota or timeout errors.
+
+## Quick start
+
+Start from source; no published npm release is required:
+
+```sh
+git clone https://github.com/YusufBeratZengin/llm-bridge.git
+cd llm-bridge
+node bin/llm-bridge.mjs --help
+node bin/llm-bridge.mjs --version
+```
+
+These commands need no dependencies, account, or model calls. Optionally install the `llm-bridge` command with `npm install -g . --omit=dev --ignore-scripts`. The npm badge shows the registry version and may be unavailable before the first publication.
+
+Install and authenticate your chosen agent CLI separately, then inspect a plan with `llm-bridge ask --dry-run "hi"`. A dry run checks status without generating a model response. Model calls can consume credits or paid quotas; llm-bridge does not estimate or approve spending.
 
 ## Quick demo
 
-These outputs were copied from local runs. The doctor output reflects a restricted Windows sandbox: installed CLIs could not launch child processes, and the local HTTP service was unavailable. No sensitive fields have been removed; doctor emits none.
-
-```console
-$ llm-bridge providers
-codex-cli
-claude-code
-ollama
-openai-compatible
-$ llm-bridge doctor --json
-{"providers":[{"name":"codex-cli","installed":true,"auth":"unknown","errorKind":"nonzero_exit"},{"name":"claude-code","installed":true,"auth":"unknown","errorKind":"nonzero_exit"},{"name":"ollama","installed":false,"auth":"unknown","errorKind":"nonzero_exit"},{"name":"openai-compatible","installed":false,"auth":"unknown","errorKind":"not_installed"}]}
-```
-
-A synthetic key is built by concatenation and sent on stdin (PowerShell):
-
-```powershell
-$demoKey = 'sk-' + ('F' * 24)
-$demoKey | llm-bridge ask --provider codex --log-dir is/demo-logs --json --prompt -
-Write-Output "exit code: $LASTEXITCODE"
-```
-
-```text
-{"text":"","provider":"","errorKind":"privacy_gate","exitCode":3,"message":"Privacy gate blocked the request. Remove sensitive data or configure an exact allowlist entry.","findings":[{"kind":"api_key","source":"prompt","line":1,"column":1}],"outputPath":null}
-exit code: 3
-```
-
-```console
-$ llm-bridge ask --provider codex --dry-run --log-dir is/demo-logs --file src/gate.mjs hi
-{"provider":"codex-cli","providers":["codex-cli"],"mode":"ask","timeoutMs":120000,"totalTimeoutMs":null,"attachments":[{"label":"attachment:1","chars":5689}],"detection":{"installed":true,"auth":"unknown","errorKind":"nonzero_exit"}}
-```
-
-For a reproducible success demo, run `node examples/fake-demo.mjs` from this checkout. It configures the checked-in **fake executable**, never a model, in `is/demo`. It runs discovery, doctor, dry-run, gate rejection and `llm-bridge ask --out answer.txt hi`. The output file contains the fake answer and stdout ends with `LLM_BRIDGE_OUTPUT` (the JSON-encoded absolute path), `LLM_BRIDGE_PROVIDER=codex-cli`, and `LLM_BRIDGE_ERROR=`. The success transcript could not be captured in the restricted sandbox because child-process creation returned `EPERM`; run the demo in a normal terminal to verify it. See [examples/](examples/).
-
-## Install from source
+The image above is generated from the real help command in Quick start, trimmed to 21 lines of usage and options for readability. Regenerate it from the repository root with Python 3 (on Windows, `py -3` can replace `python`):
 
 ```sh
-npm ci
-node bin/llm-bridge.mjs --help
-npm install -g . --omit=dev --ignore-scripts
+node bin/llm-bridge.mjs --help | python scripts/make-demo.py
 ```
 
-The package and executable are named `llm-bridge`. This repository does not assume that a release has been published to npm. Install and authenticate your chosen agent CLI separately. Model calls can consume credits or paid quotas; llm-bridge does not estimate or approve spending.
+Append `--check` to verify that the checked-in SVG matches the current CLI help without rewriting it.
+
+For an end-to-end success demo, run `node examples/fake-demo.mjs`. It uses the checked-in **fake executable**, never a model, and demonstrates provider discovery, doctor, dry-run, gate rejection, and an output file. It requires a terminal that permits child processes. See [examples/](examples/).
 
 ## Delegation flow
 
@@ -271,6 +260,18 @@ llm-bridge logs --clean --older-than 7d --log-dir is/demo-logs
 
 Cleanup removes only flat `llm-bridge-*` directories containing solely a regular `run.jsonl` older than the requested positive number of days, based on file modification time. Symlink directories/files and directories containing unrelated files are left alone. Log paths are local diagnostics; review them before sharing.
 
+## FAQ and limitations
+
+**Do I need an account or API key?** Help and version commands need neither. Generation needs a separately configured provider; use the fake-provider demo to try the flow without an account.
+
+**Does the gate protect all data?** It scans explicit inputs. It cannot cover files an agent reads automatically, hooks, or MCP context, and cannot identify every secret or PII format. See [Security boundaries](#security-boundaries).
+
+**Can HTTP providers edit files?** This release supports non-streaming text completions. It does not execute HTTP tool calls or apply edits.
+
+**Will a failed request switch models automatically?** Only explicitly configured fallback providers are tried, and only after quota or timeout errors. A write-task attempt may have made partial edits before failing.
+
+**Can tests run in a restricted sandbox?** The suite needs child-process and local listening-socket permissions. `spawn EPERM` is an environment failure; it does not establish a passing suite or a coverage percentage.
+
 ## Development
 
 ```sh
@@ -279,7 +280,7 @@ git config core.hooksPath .githooks
 npm run check
 ```
 
-The pre-commit hook scans staged text for secrets. Tests build synthetic secrets by concatenation and use generated Node executables plus local HTTP servers. Scratch data stays under ignored `is/tmp/`. CI runs lint, JSDoc type checking, and tests on Node 20, 22 and 24, on Ubuntu and Windows. The suite requires permission to create child processes and local listening sockets.
+The pre-commit hook scans staged text for secrets. Tests build synthetic secrets by concatenation and use generated Node executables plus local HTTP servers. Scratch data stays under ignored `is/tmp/`. CI runs lint, JSDoc type checking, and tests on Node 20, 22 and 24, on Ubuntu and Windows. `npm test` prints Node's built-in coverage report locally and in CI; the target is at least 85% line coverage. Dependabot checks dependencies and GitHub Actions weekly; CodeQL runs on pushes, pull requests, and a weekly schedule. The suite requires permission to create child processes and local listening sockets.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [CHANGELOG.md](CHANGELOG.md).
 

@@ -16,6 +16,18 @@ CLI adapters must execute without a shell, accept prompts through stdin, preserv
 
 The test suite needs child-process and local-server permissions. Report environmental failures explicitly. Passing the gate/HTTP subset alone does not establish that subprocess behavior works.
 
+`npm test` includes Node's native coverage report with no additional dependencies or external reporting service. Aim for at least 85% application line coverage and add behavioral tests for uncovered branches. Coverage is meaningful only after the full suite passes.
+
+Regenerate the README terminal image from actual CLI help with Python 3:
+
+```sh
+node bin/llm-bridge.mjs --help | python scripts/make-demo.py
+```
+
+On Windows, `py -3` can replace `python`. The generator reads the help output from stdin, trims it to a short excerpt, and writes `docs/demo.svg`. It never calls a model. Commit the generator and generated SVG together when the help text changes.
+
+Append `--check` to the generator command to check for a stale image without rewriting it.
+
 Before committing, the `.githooks/pre-commit` hook scans staged text. Never commit secrets, `.env` files, local `.llm-bridge.json` configuration, generated logs, or `is/` scratch files. Follow [SECURITY.md](SECURITY.md) for suspected vulnerabilities.
 
 `scripts/scan-allowlist.json` contains exact public npm integrity checksums for the staged scanner. When updating dependencies, independently verify newly flagged checksums against their package metadata before updating this list. This list is not used by the runtime privacy gate. Do not add credentials or broad patterns.

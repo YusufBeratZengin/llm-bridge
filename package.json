@@ -28,7 +28,7 @@
     "examples"
   ],
   "scripts": {
-    "test": "node --test",
+    "test": "node --experimental-test-coverage --test",
     "lint": "biome check .",
     "format": "biome check --write .",
     "typecheck": "tsc --noEmit",

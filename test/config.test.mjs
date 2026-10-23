@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
-import { loadConfig, validateConfig } from "../src/config.mjs";
+import { loadConfig, mergeConfig, validateConfig, validateTimeout } from "../src/config.mjs";
 import { resolveCommand } from "../src/process.mjs";
 import { createProviders } from "../src/providers.mjs";
 import { workspace } from "./helpers.mjs";
@@ -86,4 +86,73 @@ test("Windows npm shim resolution does not invoke a shell", async (t) => {
   assert.equal(resolved.prefix[0], join(modules, "cli.js"));
   await writeFile(join(dir, "unsafe.cmd"), "@echo off\necho arbitrary shell script\n");
   assert.equal(await resolveCommand(join(dir, "unsafe.cmd"), dir), null);
+});
+
+test("configuration rejects malformed object shapes and executable argument arrays", () => {
+  const cases = [
+    [null, /must contain objects/],
+    [[], /must contain objects/],
+    [{ provider: 42 }, /provider must be a string/],
+    [{ gate: [] }, /must contain objects/],
+    [{ gate: { allowlist: [42] } }, /array of strings/],
+    [{ gate: { allowlist: ["public\0value"] } }, /array of strings/],
+    [{ providers: [] }, /must contain objects/],
+    [{ providers: { "Invalid Name": {} } }, /Invalid provider name/],
+    [{ providers: { custom: null } }, /must contain objects/],
+    [{ providers: { custom: { command: "" } } }, /nonempty strings/],
+    [{ providers: { custom: { model: "public\0model" } } }, /nonempty strings/],
+    [{ providers: { custom: { args: "--ask" } } }, /array of strings/],
+    [{ providers: { custom: { detectArgs: [1] } } }, /array of strings/],
+    [{ providers: { custom: { modeArgs: { execute: [] } } } }, /Unknown configuration field/],
+    [
+      { providers: { custom: { errorPatterns: { unexpected: ["failure"] } } } },
+      /Unknown configuration field/,
+    ],
+  ];
+  for (const [config, expected] of cases) {
+    assert.throws(() => validateConfig(config), expected);
+  }
+});
+
+test("timeouts reject overflow and nonintegers while accepting both timer boundaries", () => {
+  for (const value of [Number.NaN, Number.POSITIVE_INFINITY, 1.5, -1, 2_147_483_648]) {
+    assert.throws(() => validateTimeout(value), /integer between 1 and 2147483647/);
+  }
+  validateTimeout(1);
+  validateTimeout(2_147_483_647);
+});
+
+test("project config replaces nested argument maps without mutating home provider settings", () => {
+  const home = {
+    gate: { pii: true, allowlist: ["public-fixture"] },
+    providers: {
+      custom: {
+        command: "public-agent",
+        args: ["home-argument"],
+        modeArgs: { ask: ["read"], task: ["write"] },
+        errorPatterns: { quota_exhausted: ["capacity"], auth_required: ["login"] },
+      },
+      ollama: { model: "public-model" },
+    },
+  };
+  const original = structuredClone(home);
+  const merged = mergeConfig(home, {
+    gate: { allowlist: [] },
+    providers: {
+      custom: {
+        args: [],
+        modeArgs: { ask: ["project-read"] },
+        errorPatterns: { timeout: ["deadline"] },
+      },
+    },
+  });
+  assert.deepEqual(merged.providers.custom, {
+    command: "public-agent",
+    args: [],
+    modeArgs: { ask: ["project-read"] },
+    errorPatterns: { timeout: ["deadline"] },
+  });
+  assert.deepEqual(merged.providers.ollama, { model: "public-model" });
+  assert.deepEqual(merged.gate, { pii: true, allowlist: [] });
+  assert.deepEqual(home, original);
 });

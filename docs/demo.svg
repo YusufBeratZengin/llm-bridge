@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1056" height="664" viewBox="0 0 1056 664" role="img" aria-labelledby="title description">
+  <title id="title">llm-bridge CLI help</title>
+  <desc id="description">Real CLI output: usage and the first options from node bin/llm-bridge.mjs --help. The help banner and remaining options are omitted. No model is called.</desc>
+  <rect x="1" y="1" width="1054" height="662" rx="16" fill="#0d1117" stroke="#30363d" stroke-width="2"/>
+  <path d="M17 2 H1039 Q1054 2 1054 17 V48 H2 V17 Q2 2 17 2" fill="#161b22"/>
+  <circle cx="26" cy="25" r="6" fill="#ff5f57"/>
+  <circle cx="48" cy="25" r="6" fill="#febc2e"/>
+  <circle cx="70" cy="25" r="6" fill="#28c840"/>
+  <text x="528" y="30" text-anchor="middle" fill="#b1bac4" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="13">llm-bridge / terminal</text>
+  <g font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="16" xml:space="preserve">
+    <text x="28" y="86" fill="#7ee787">$ node bin/llm-bridge.mjs --help</text>
+    <text x="28" y="110" fill="#e6edf3"></text>
+    <text x="28" y="134" fill="#79c0ff">Usage:</text>
+    <text x="28" y="158" fill="#e6edf3">  llm-bridge ask|review|task [options] [--] &quot;prompt&quot;</text>
+    <text x="28" y="182" fill="#e6edf3">  llm-bridge providers [--cwd directory] [--json]</text>
+    <text x="28" y="206" fill="#e6edf3">  llm-bridge doctor [--cwd directory] [--json]</text>
+    <text x="28" y="230" fill="#e6edf3">  llm-bridge logs --last [--log-dir directory]</text>
+    <text x="28" y="254" fill="#e6edf3">  llm-bridge logs --clean --older-than 7d [--log-dir directory]</text>
+    <text x="28" y="278" fill="#e6edf3"></text>
+    <text x="28" y="302" fill="#79c0ff">Options:</text>
+    <text x="28" y="326" fill="#e6edf3">  --provider NAME       Provider (default: config or codex-cli)</text>
+    <text x="28" y="350" fill="#e6edf3">  --model NAME          Model override</text>
+    <text x="28" y="374" fill="#e6edf3">  --cwd DIRECTORY       Working directory (default: current directory)</text>
+    <text x="28" y="398" fill="#e6edf3">  --file PATH           Attach a UTF-8 text file; repeatable</text>
+    <text x="28" y="422" fill="#e6edf3">  --prompt TEXT         Prompt instead of positional text; &#x27;-&#x27; reads stdin</text>
+    <text x="28" y="446" fill="#e6edf3">  --timeout-ms N        Per-provider timeout (default: 120000)</text>
+    <text x="28" y="470" fill="#e6edf3">  --total-timeout-ms N  Overall chain timeout (default: none)</text>
+    <text x="28" y="494" fill="#e6edf3">  --dry-run             Validate, gate and detect; never generate</text>
+    <text x="28" y="518" fill="#e6edf3">  --log-dir DIRECTORY  Parent directory for redacted run logs</text>
+    <text x="28" y="542" fill="#e6edf3">  --fallback NAMES      Comma-separated providers, tried on quota or timeout</text>
+    <text x="28" y="566" fill="#e6edf3">  --allow-write         Required for task mode</text>
+    <text x="28" y="590" fill="#e6edf3">  --pii                 Enable PII checks in addition to secret checks</text>
+    <text x="28" y="614" fill="#e6edf3">  --out PATH            Save result text; stdout contains only trailer lines</text>
+  </g>
+  <text x="28" y="642" fill="#b1bac4" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12">CLI help excerpt / no model calls / zero runtime dependencies</text>
+</svg>

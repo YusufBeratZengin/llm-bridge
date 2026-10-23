@@ -29,5 +29,9 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm test
+      - name: Verify demo matches CLI help
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 22
+        run: node bin/llm-bridge.mjs --help | python3 scripts/make-demo.py --check
+      - name: Tests and coverage
+        run: npm test
       - run: npm pack --dry-run

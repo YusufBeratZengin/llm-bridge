@@ -1,56 +1,45 @@
 # llm-bridge
 
-[![CI](https://github.com/YusufBeratZengin/llm-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/YusufBeratZengin/llm-bridge/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![Node.js](https://img.shields.io/badge/node-%3E%3D20-green.svg)](package.json)
+[![CI](https://github.com/YusufBeratZengin/llm-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/YusufBeratZengin/llm-bridge/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![Node.js](https://img.shields.io/badge/node-%3E%3D20-green.svg)](package.json) [![npm](https://img.shields.io/npm/v/llm-bridge.svg)](https://www.npmjs.com/package/llm-bridge)
 
-Bir kodlama ajanından diğerine görev aktarmak için tek komut satırı aracı ve küçük bir Node kütüphanesi. Farklı CLI ve HTTP servislerini ortak bir arayüzde toplar; gönderilecek metni tarar, süre sınırı uygular, içeriği gizlenmiş JSONL kayıtları tutar ve istenirse kota veya zaman aşımı hatasında sıradaki sağlayıcıya geçer.
+CLI ve HTTP tabanlı kodlama ajanlarına gizlilik kontrolüyle görev aktaran, ek çalışma bağımlılığı gerektirmeyen bir CLI ve Node kütüphanesi.
 
-[English](README.md) · MIT · Node.js 20 ve üzeri · ESM · Çalışma anında ek bağımlılık yok
+[English](README.md) · MIT · Node.js 20 ve üzeri · ESM
 
-Kaynak depodan `npm install -g . --omit=dev --ignore-scripts` ile kurun; üretimden önce `llm-bridge ask --dry-run "hi"` ile planı inceleyin. Çalışma anında ek bağımlılık gerekmez.
+![llm-bridge yardım komutunun gerçek terminal çıktısı](docs/demo.svg)
+
+## Neden llm-bridge?
+
+- **Tek arayüz:** Codex CLI, Claude Code, Ollama ve OpenAI uyumlu servislerde ortak komutlar ve hata türleri.
+- **Göndermeden önce kontrol:** Açıkça verilen prompt, ekler ve diff için sır taraması; isteğe bağlı kişisel veri taraması ve içeriği gizlenmiş kayıtlar.
+- **Kontrollü görev aktarımı:** Salt okunur modlar, açık yazma izni, süre sınırları ve yalnızca kota veya zaman aşımında seçtiğiniz yedek sağlayıcı.
+
+## Hızlı başlangıç
+
+Kaynak koddan başlayın; paketin npm'de yayımlanmış olması gerekmez:
+
+```sh
+git clone https://github.com/YusufBeratZengin/llm-bridge.git
+cd llm-bridge
+node bin/llm-bridge.mjs --help
+node bin/llm-bridge.mjs --version
+```
+
+Bu komutlar ek bağımlılık, hesap veya model çağrısı gerektirmez. İsteğe bağlı olarak `npm install -g . --omit=dev --ignore-scripts` ile `llm-bridge` komutunu kurabilirsiniz. npm rozeti kayıt servisindeki sürümü gösterir; ilk yayından önce sürüm görünmeyebilir.
+
+Kullanacağınız ajan CLI'ını ayrıca kurup hesabınızla giriş yapın; ardından `llm-bridge ask --dry-run "hi"` ile planı inceleyin. `--dry-run` durum kontrolü yapar, modelden yanıt üretmez. Model çağrıları ücret veya kota tüketebilir; llm-bridge maliyet hesaplamaz ve harcama onayı vermez.
 
 ## Hızlı demo
 
-Aşağıdaki çıktılar yerel çalıştırmalardan alındı. Doctor çıktısı kısıtlı bir Windows sandbox'ına ait: kurulu CLI'lar alt süreç başlatamadı, yerel HTTP servisine de ulaşılamadı. Çıktıdan hassas alan silinmedi; doctor zaten bu tür alanlar üretmez.
-
-```console
-$ llm-bridge providers
-codex-cli
-claude-code
-ollama
-openai-compatible
-$ llm-bridge doctor --json
-{"providers":[{"name":"codex-cli","installed":true,"auth":"unknown","errorKind":"nonzero_exit"},{"name":"claude-code","installed":true,"auth":"unknown","errorKind":"nonzero_exit"},{"name":"ollama","installed":false,"auth":"unknown","errorKind":"nonzero_exit"},{"name":"openai-compatible","installed":false,"auth":"unknown","errorKind":"not_installed"}]}
-```
-
-Sahte anahtar, parçalar birleştirilerek oluşturulur ve stdin üzerinden verilir (PowerShell):
-
-```powershell
-$demoKey = 'sk-' + ('F' * 24)
-$demoKey | llm-bridge ask --provider codex --log-dir is/demo-logs --json --prompt -
-Write-Output "exit code: $LASTEXITCODE"
-```
-
-```text
-{"text":"","provider":"","errorKind":"privacy_gate","exitCode":3,"message":"Privacy gate blocked the request. Remove sensitive data or configure an exact allowlist entry.","findings":[{"kind":"api_key","source":"prompt","line":1,"column":1}],"outputPath":null}
-exit code: 3
-```
-
-```console
-$ llm-bridge ask --provider codex --dry-run --log-dir is/demo-logs --file src/gate.mjs hi
-{"provider":"codex-cli","providers":["codex-cli"],"mode":"ask","timeoutMs":120000,"totalTimeoutMs":null,"attachments":[{"label":"attachment:1","chars":5689}],"detection":{"installed":true,"auth":"unknown","errorKind":"nonzero_exit"}}
-```
-
-Başarılı akışı tekrarlamak için deponun kökünde `node examples/fake-demo.mjs` çalıştırın. Betik `is/demo` içinde depodaki **sahte çalıştırılabilir dosyayı** ayarlar; model çağırmaz. Sağlayıcı listesi, doctor, dry-run, gate engeli ve `llm-bridge ask --out answer.txt hi` adımlarını çalıştırır. Yanıt dosyasına sahte cevap yazılır; stdout sonunda `LLM_BRIDGE_OUTPUT` (JSON biçiminde tam dosya yolu), `LLM_BRIDGE_PROVIDER=codex-cli` ve `LLM_BRIDGE_ERROR=` satırları bulunur. Sandbox alt süreç oluşturmaya `EPERM` verdiği için başarı çıktısı burada kaydedilemedi; demoyu normal terminalde doğrulayın. [examples/](examples/) klasörüne bakın.
-
-## Kaynaktan kurulum
+Yukarıdaki görsel, hızlı başlangıçtaki gerçek yardım komutunun çıktısından üretilir; okunabilirlik için kullanım ve seçenekler bölümü 21 satırla sınırlıdır. Görseli deponun kökünde Python 3 ile yeniden üretin (Windows'ta `python` yerine `py -3` kullanılabilir):
 
 ```sh
-npm ci
-node bin/llm-bridge.mjs --help
-npm install -g . --omit=dev --ignore-scripts
+node bin/llm-bridge.mjs --help | python scripts/make-demo.py
 ```
 
-Paketin ve komutun adı `llm-bridge`. Bu depo, paketin npm'de yayımlandığını varsaymaz. Kullanacağınız ajanı ayrıca kurup kendi hesabınızla giriş yapın. Model çağrıları ücret veya kota tüketebilir; llm-bridge maliyet hesaplamaz ve harcama onayı vermez.
+Komuta `--check` ekleyerek depodaki SVG'nin güncel CLI yardımıyla eşleştiğini dosyayı değiştirmeden doğrulayabilirsiniz.
+
+Uçtan uca başarı akışı için `node examples/fake-demo.mjs` çalıştırın. Betik depodaki **sahte çalıştırılabilir dosyayı** kullanır; model çağırmaz. Sağlayıcı listesi, doctor, dry-run, gizlilik engeli ve çıktı dosyası adımlarını gösterir. Alt süreç başlatmaya izin veren bir terminal gerekir. [examples/](examples/) klasörüne bakın.
 
 ## Akış
 
@@ -273,6 +262,18 @@ llm-bridge logs --clean --older-than 7d --log-dir is/demo-logs
 
 Temizlik yalnızca tek bir normal `run.jsonl` dosyası içeren `llm-bridge-*` dizinlerini kaldırır. Dosyanın son değişiklik zamanı verilen pozitif gün sayısından eski olmalıdır. Sembolik bağlantılara ve içinde başka dosya olan dizinlere dokunulmaz. Kayıt yolları yerel tanı bilgisidir; paylaşmadan önce gözden geçirin.
 
+## Sık sorulanlar ve sınırlamalar
+
+**Hesap veya API anahtarı gerekir mi?** Yardım ve sürüm komutları için gerekmez. Yanıt üretmek için seçtiğiniz sağlayıcıyı ayrıca yapılandırmanız gerekir; deneme için sahte sağlayıcı demosunu kullanabilirsiniz.
+
+**Gizlilik kontrolü tüm veriyi korur mu?** Açıkça verilen girdileri tarar. Ajanın kendiliğinden okuduğu dosyaları, hook'ları veya MCP bağlamını kapsamaz; her sır ve kişisel veri biçimini tanıyamaz. Ayrıntılar için [güvenlik sınırlarına](#güvenlik-sınırları) bakın.
+
+**HTTP sağlayıcıları dosyaları düzenler mi?** Hayır; bu sürüm akışsız metin tamamlamalarını destekler. HTTP araç çağrıları çalıştırılmaz ve dosya değişiklikleri uygulanmaz.
+
+**Hata olunca otomatik başka modele geçer mi?** Yalnızca belirttiğiniz yedek sağlayıcılar arasında, kota veya zaman aşımı hatasında geçer. Yazma görevlerinde ilk deneme kısmi değişiklik bırakmış olabilir.
+
+**Testler kısıtlı bir sandbox'ta çalışır mı?** Testler alt süreç ve yerel dinleme soketi izni gerektirir. `spawn EPERM` ortam engelidir; testlerin geçtiği veya kapsam eşiğine ulaşıldığı anlamına gelmez.
+
 ## Geliştirme
 
 ```sh
@@ -281,7 +282,7 @@ git config core.hooksPath .githooks
 npm run check
 ```
 
-Pre-commit hook, staged metinleri sırlar için tarar. Testler birleştirilerek üretilen sahte sırlar, geçici Node çalıştırılabilirleri ve yerel HTTP sunucuları kullanır. Geçici test dosyaları yok sayılan `is/tmp/` altında kalır. CI; Ubuntu ve Windows'ta Node 20, 22 ve 24 için lint, JSDoc tür kontrolü ve testleri çalıştırır. Test ortamında alt süreç başlatma ve yerel port dinleme izni gerekir.
+Pre-commit hook, staged metinleri sırlar için tarar. Testler birleştirilerek üretilen sahte sırlar, geçici Node çalıştırılabilirleri ve yerel HTTP sunucuları kullanır. Geçici test dosyaları yok sayılan `is/tmp/` altında kalır. CI; Ubuntu ve Windows'ta Node 20, 22 ve 24 için lint, JSDoc tür kontrolü ve testleri çalıştırır. `npm test`, Node'un yerleşik kapsam raporunu terminale ve CI çıktısına yazar; hedef satır kapsamı en az %85'tir. Bağımlılık ve GitHub Actions güncellemeleri haftalık denetlenir; CodeQL, gönderimlerde, PR'larda ve haftalık olarak çalışır. Test ortamında alt süreç başlatma ve yerel port dinleme izni gerekir.
 
 [Katkı rehberi](CONTRIBUTING.md), [güvenlik politikası](SECURITY.md) ve [değişiklikler](CHANGELOG.md).
 
