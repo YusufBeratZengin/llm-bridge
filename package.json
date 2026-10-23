@@ -39,7 +39,7 @@
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@types/node": "20.17.19",
-    "typescript": "5.6.3"
+    "typescript": "7.0.2"
   },
   "author": "Yusuf Berat Zengin",
   "repository": {
